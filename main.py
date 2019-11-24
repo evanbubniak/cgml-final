@@ -31,6 +31,11 @@ def make_output_dirs():
         if not os.path.exists(output_path):
             os.makedirs(output_path)
 
+def create_gaussian_noise(off_point, scale=0.01):
+    noise = np.random.normal(scale=scale, size=2)
+    noisy_point = [off_point[0] + noise[0], off_point[1] + noise[1]]
+    return noisy_point
+
 class Glyph:
     def __init__(self, font_name, char_name):
         self.glyph = None
@@ -100,8 +105,8 @@ class Glyph:
                 curve = bezier.Curve(curve, degree = 2)
                 if loc == contour_len:
                     last = True
-                if loc <= len_sum:
-                    proportion = (loc - len_sum)/curve.length
+                while loc <= len_sum:
+                    proportion = 1 - (len_sum - loc)/curve.length
                     point = curve.evaluate(proportion).flatten()
                     if first:
                         start_points.append(point)
@@ -116,6 +121,7 @@ class Glyph:
         
             for start_point, end_point in zip(start_points, end_points):
                 off_point = [(start_point[0] + end_point[0])/2, (start_point[1] + end_point[1])/2]
+                #off_point = create_gaussian_noise(off_point)
                 curve = [start_point, off_point, end_point]
                 fixed_num_contour.append(curve)
 
