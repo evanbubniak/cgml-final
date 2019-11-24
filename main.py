@@ -102,12 +102,13 @@ class Glyph:
             last = False
 
             for curve in transposed_contour:
-                curve = bezier.Curve(curve, degree = 2)
+                bezier_curve = bezier.Curve(curve, degree = 2)
+                len_sum += bezier_curve.length
                 if loc == contour_len:
                     last = True
                 while loc <= len_sum:
-                    proportion = 1 - (len_sum - loc)/curve.length
-                    point = curve.evaluate(proportion).flatten()
+                    proportion = 1 - (len_sum - loc)/bezier_curve.length
+                    point = bezier_curve.evaluate(proportion).flatten()
                     if first:
                         start_points.append(point)
                     elif last:
@@ -116,7 +117,6 @@ class Glyph:
                         start_points.append(point)
                         end_points.append(point)
                     loc += dist_per_point
-                len_sum += curve.length
                 first = False
         
             for start_point, end_point in zip(start_points, end_points):
