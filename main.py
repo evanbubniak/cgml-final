@@ -47,7 +47,8 @@ def render_curve(curve, curve_name = "test"):
     render(np.array([curve]))
     for output_format in OUTPUT_FORMATS:
         file_name = "curve-{}.{}".format(curve_name, output_format)
-        plt.savefig(os.path.join("outputs", file_name))    
+        plt.savefig(os.path.join("outputs", file_name))  
+    plt.close()  
 
 def get_contour_length(contour):
     length = 0
@@ -73,6 +74,8 @@ class Glyph:
     def __init__(self, font_name, char_name):
         self.glyph = None
         self.char_name = char_name
+        if char_name.isupper():
+            self.char_name += "-uppercase"
         font_path = os.path.join("fonts", "json", "{}.json".format(font_name.lower()))
         font = read_json(font_path)
         for glyph in font:
@@ -85,15 +88,14 @@ class Glyph:
         self.num_contours = len(self.contours)
 
 
-    def render_raw_glyph(self, display_fig=False):
+    def render_raw_glyph(self):
         # Just renders directly using Glaze and saves it.
         plt.figure()
         render(self.contours)
         for output_format in OUTPUT_FORMATS:
             file_name = "{}-{}-raw-glyph.{}".format(self.font_name, self.char_name, output_format)
             plt.savefig(os.path.join("outputs", "raw", file_name))
-        if display_fig:
-            plt.show()
+        plt.close()
 
     def render_straight_line_glyph(self):
         '''
@@ -116,6 +118,7 @@ class Glyph:
         for output_format in OUTPUT_FORMATS:
             file_name = "{}-{}-raw-straight-line-glyph.{}".format(self.font_name, self.char_name, output_format)
             plt.savefig(os.path.join("outputs", "raw-straight-line", file_name))
+        plt.close()
     
     def render_fixed_num_bezier(self, num_points = 20):
         fixed_num_contours = []
@@ -152,9 +155,7 @@ class Glyph:
                         end_points.append(point)
                     loc += dist_per_point
                     first = False
-
-            #start_points.append(end_points[-1])
-            #end_points.append(start_points[0])        
+       
             for start_point, end_point in zip(start_points, end_points):
                 off_point = [(start_point[0] + end_point[0])/2, (start_point[1] + end_point[1])/2]
                 #off_point = create_gaussian_noise(off_point)
@@ -166,15 +167,13 @@ class Glyph:
         render(fixed_num_contours)
         for output_format in OUTPUT_FORMATS:
             file_name = "{}-{}-fixed-straight-line-glyph.{}".format(self.font_name, self.char_name, output_format)
-            plt.savefig(os.path.join("outputs", "fixed-straight-line", file_name))        
+            plt.savefig(os.path.join("outputs", "fixed-straight-line", file_name))   
+        plt.close()     
                     
-
-                
-
 if __name__ == "__main__":
     make_output_dirs()
     for glyph in args.glyph:
         glyph = Glyph(font_name="Arial", char_name=glyph)
         glyph.render_raw_glyph()
-        glyph.render_straight_line_glyph()
+        #glyph.render_straight_line_glyph()
         glyph.render_fixed_num_bezier(num_points = args.points)
