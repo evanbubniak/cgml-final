@@ -3,7 +3,31 @@ import bezier
 import numpy as np
 from glaze import read_json, render
 import matplotlib.pyplot as plt
+from math import isclose
 import argparse
+
+UPPERCASES = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+LOWERCASES = [character.lower() for character in UPPERCASES]
+NUMERALS = ["zero",
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+    "nine"]
+
+SPECIALS = ["exclam",
+    "numbersign",
+    "dollar",
+    "percent",
+    "ampersand",
+    "asterisk",
+    "question",
+    "at"]
+CHARACTER_SET = UPPERCASES + LOWERCASES + NUMERALS + SPECIALS
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-o", "--output_format", nargs="*", default = ["png"],
@@ -13,8 +37,17 @@ parser.add_argument("-g", "--glyph", nargs="*", default = ["o"],
 parser.add_argument("-p", "--points", nargs="?", type=int, default = 20,
     help = "Num points to render")    
 args = parser.parse_args()
+if args.glyph == ["all"]:
+    args.glyph = CHARACTER_SET
 
 OUTPUT_FORMATS = args.output_format
+
+def render_curve(curve, curve_name = "test"):
+    plt.figure()
+    render(np.array([curve]))
+    for output_format in OUTPUT_FORMATS:
+        file_name = "curve-{}.{}".format(curve_name, output_format)
+        plt.savefig(os.path.join("outputs", file_name))    
 
 def get_contour_length(contour):
     length = 0
@@ -86,14 +119,15 @@ class Glyph:
     
     def render_fixed_num_bezier(self, num_points = 20):
         fixed_num_contours = []
-        
+
         for contour in self.contours:
+
             fixed_num_contour = []
             start_points = []
             end_points = []
 
             contour_len = get_contour_length(contour)
-            dist_per_point = contour_len/num_points
+            dist_per_point = contour_len/(num_points)
             loc = 0
             len_sum = 0
             transposed_contour = np.transpose(contour, axes=(0, 2, 1)).astype(np.float64)
@@ -104,9 +138,9 @@ class Glyph:
             for curve in transposed_contour:
                 bezier_curve = bezier.Curve(curve, degree = 2)
                 len_sum += bezier_curve.length
-                if loc == contour_len:
-                    last = True
-                while loc <= len_sum:
+                while loc < len_sum or isclose(loc, len_sum):
+                    if isclose(loc, contour_len):
+                        last = True
                     proportion = 1 - (len_sum - loc)/bezier_curve.length
                     point = bezier_curve.evaluate(proportion).flatten()
                     if first:
@@ -117,14 +151,15 @@ class Glyph:
                         start_points.append(point)
                         end_points.append(point)
                     loc += dist_per_point
-                first = False
-        
+                    first = False
+
+            #start_points.append(end_points[-1])
+            #end_points.append(start_points[0])        
             for start_point, end_point in zip(start_points, end_points):
                 off_point = [(start_point[0] + end_point[0])/2, (start_point[1] + end_point[1])/2]
                 #off_point = create_gaussian_noise(off_point)
                 curve = [start_point, off_point, end_point]
                 fixed_num_contour.append(curve)
-
             fixed_num_contours.append(np.array(fixed_num_contour))
 
         plt.figure()
