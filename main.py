@@ -1,3 +1,5 @@
+# encoding: utf-8
+
 import os
 import bezier
 import numpy as np
@@ -35,7 +37,9 @@ parser.add_argument("-o", "--output_format", nargs="*", default = ["png"],
 parser.add_argument("-g", "--glyph", nargs="*", default = ["o"],
     help = "list of glyphs to render")
 parser.add_argument("-p", "--points", nargs="?", type=int, default = 20,
-    help = "Num points to render")    
+    help = "Num points to render")
+parser.add_argument("-f", "--font", type=str, nargs="?", default="arial",
+    help = "Font to use")
 args = parser.parse_args()
 if args.glyph == ["all"]:
     args.glyph = CHARACTER_SET
@@ -65,10 +69,34 @@ def make_output_dirs():
         if not os.path.exists(output_path):
             os.makedirs(output_path)
 
-def create_gaussian_noise(off_point, scale=0.01):
+def create_gaussian_noise(off_point, scale=0.05):
     noise = np.random.normal(scale=scale, size=2)
     noisy_point = [off_point[0] + noise[0], off_point[1] + noise[1]]
     return noisy_point
+
+def get_angle_changes(contour):
+    # return a list of angle changes between each bezier curve.
+    angles = []
+    for curve in contour:
+        delta_x = curve[2][0] - curve[0][0]
+        delta_y = curve[2][1] - curve[0][1]
+        theta = np.arctan2(delta_y, delta_x)
+        angles.append(theta)
+
+    delta_angles = [angles[i] - angles[i - 1] for i in range(0, len(angles))]
+    plt.figure()
+    plt.plot(range(len(angles)), angles)
+    plt.title("Thetas")
+    plt.xlabel("Curve number")
+    plt.ylabel("Angle between points (rad)")
+    plt.savefig("thetas.png")
+    plt.figure()
+    plt.plot(range(len(delta_angles)), delta_angles)
+    plt.title("Delta thetas")
+    plt.ylabel("Change in angle between points (rad)")
+    plt.xlabel("Curve number")
+    plt.savefig("deltathetas.png")
+    return delta_angles
 
 class Glyph:
     def __init__(self, font_name, char_name):
@@ -119,8 +147,16 @@ class Glyph:
             file_name = "{}-{}-raw-straight-line-glyph.{}".format(self.font_name, self.char_name, output_format)
             plt.savefig(os.path.join("outputs", "raw-straight-line", file_name))
         plt.close()
-    
+
+    def generate_contour_distribution(self, contour):
+        angle_changes = get_angle_changes(contour)
+        normalized_angle_changes = angle_changes/max(angle_changes)
+
     def render_fixed_num_bezier(self, num_points = 20):
+        for contour in self.contours:
+            self.generate_contour_distribution(contour)
+    
+    def render_fixed_num_distance_bezier(self, num_points = 20):
         fixed_num_contours = []
 
         for contour in self.contours:
@@ -173,7 +209,10 @@ class Glyph:
 if __name__ == "__main__":
     make_output_dirs()
     for glyph in args.glyph:
-        glyph = Glyph(font_name="Arial", char_name=glyph)
-        glyph.render_raw_glyph()
+        glyph = Glyph(font_name = args.font, char_name=glyph)
+        # try:
+        #     glyph.render_raw_glyph()
+        # except:
+        #     print(glyph.char_name)
         #glyph.render_straight_line_glyph()
         glyph.render_fixed_num_bezier(num_points = args.points)
