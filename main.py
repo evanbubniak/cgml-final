@@ -51,8 +51,8 @@ def render_curve(curve, curve_name = "test"):
     render(np.array([curve]))
     for output_format in OUTPUT_FORMATS:
         file_name = "curve-{}.{}".format(curve_name, output_format)
-        plt.savefig(os.path.join("outputs", file_name))  
-    plt.close()  
+        plt.savefig(os.path.join("outputs", file_name))
+    plt.close()
 
 def get_contour_length(contour):
     length = 0
@@ -77,13 +77,29 @@ def create_gaussian_noise(off_point, scale=0.05):
 def get_angle_changes(contour):
     # return a list of angle changes between each bezier curve.
     angles = []
+    delta_angles = []
     for curve in contour:
         delta_x = curve[2][0] - curve[0][0]
         delta_y = curve[2][1] - curve[0][1]
         theta = np.arctan2(delta_y, delta_x)
         angles.append(theta)
 
-    delta_angles = [angles[i] - angles[i - 1] for i in range(0, len(angles))]
+    # delta_angles = [angles[i] - angles[i - 1] for i in range(0, len(angles))]
+
+    for i in range(0, len(angles)):
+        delta_angles.append(angles[i] - angles[i - 1])
+        if i == 0:
+            pass
+        else:
+            if delta_angles[i] > 5:
+                delta_angles[i] = delta_angles[i] - 6.2
+            if delta_angles[i] < -5:
+                delta_angles[i] = delta_angles[i] + 6.2
+
+    print("ang", angles)
+    print("change", delta_angles)
+
+
     plt.figure()
     plt.plot(range(len(angles)), angles)
     plt.title("Thetas")
@@ -96,7 +112,9 @@ def get_angle_changes(contour):
     plt.ylabel("Change in angle between points (rad)")
     plt.xlabel("Curve number")
     plt.savefig("deltathetas.png")
+    plt.show()
     return delta_angles
+
 
 class Glyph:
     def __init__(self, font_name, char_name):
@@ -155,7 +173,7 @@ class Glyph:
     def render_fixed_num_bezier(self, num_points = 20):
         for contour in self.contours:
             self.generate_contour_distribution(contour)
-    
+
     def render_fixed_num_distance_bezier(self, num_points = 20):
         fixed_num_contours = []
 
@@ -191,7 +209,7 @@ class Glyph:
                         end_points.append(point)
                     loc += dist_per_point
                     first = False
-       
+
             for start_point, end_point in zip(start_points, end_points):
                 off_point = [(start_point[0] + end_point[0])/2, (start_point[1] + end_point[1])/2]
                 #off_point = create_gaussian_noise(off_point)
@@ -203,9 +221,9 @@ class Glyph:
         render(fixed_num_contours)
         for output_format in OUTPUT_FORMATS:
             file_name = "{}-{}-fixed-straight-line-glyph.{}".format(self.font_name, self.char_name, output_format)
-            plt.savefig(os.path.join("outputs", "fixed-straight-line", file_name))   
-        plt.close()     
-                    
+            plt.savefig(os.path.join("outputs", "fixed-straight-line", file_name))
+        plt.close()
+
 if __name__ == "__main__":
     make_output_dirs()
     for glyph in args.glyph:
