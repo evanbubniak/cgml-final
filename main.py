@@ -47,16 +47,8 @@ if args.glyph == ["all"]:
 
 OUTPUT_FORMATS = args.output_format
 
-def render_curve(curve, curve_name = "test"):
-    plt.figure()
-    render(np.array([curve]))
-    for output_format in OUTPUT_FORMATS:
-        file_name = "curve-{}.{}".format(curve_name, output_format)
-        plt.savefig(os.path.join("outputs", file_name))  
-    plt.close()  
-
 def make_output_dirs():
-    output_types = ["raw", "raw-straight-line", "fixed-straight-line"]
+    output_types = ["raw", "raw-straight-line", "fixed-straight-line", "fixed-num-var-dist-straight-line"]
     for output_type in output_types:
         output_path = os.path.join("outputs", output_type)
         if not os.path.exists(output_path):
@@ -117,14 +109,63 @@ class Glyph:
             plt.savefig(os.path.join("outputs", "raw-straight-line", file_name))
         plt.close()
 
-    def generate_contour_distribution(self, contour):
-        angle_changes = contourlib.get_angle_changes(contour)
-        normalized_angle_changes = angle_changes/max(angle_changes)
-
-    def render_fixed_num_bezier(self, num_points):
+    def make_fixed_num_var_dist_bezier(self, num_points):
+        fixed_num_contours = []
         for contour in self.contours:
-            self.generate_contour_distribution(contour)
+            distribution = contourlib.generate_contour_distribution(contour, num_points)
+            fixed_num_contour = []
+            start_points = []
+            end_points = []
 
+            contour_len = contourlib.get_contour_length(contour)
+            dist_per_point = contour_len/(num_points)
+            loc = 0
+            len_sum = 0
+            transposed_contour = np.transpose(contour, axes=(0, 2, 1)).astype(np.float64)
+
+            first = True
+            last = False
+
+            j = 0
+
+            for i in range(len(transposed_contour)):
+                bezier_curve = bezier.Curve(transposed_contour[i], degree = 2)
+                while i <= distribution[j] <= i+1:
+                    if distribution[j] != 0 and distribution[j]%1 == 0:
+                        proportion = 1.0
+                    else:
+                        proportion = distribution[j]%1
+                    if distribution[j] == len(transposed_contour):
+                        last = True
+                    point = bezier_curve.evaluate(proportion).flatten()
+                    if first:
+                        start_points.append(point)
+                    elif last:
+                        end_points.append(point)
+                    else:
+                        start_points.append(point)
+                        end_points.append(point)                    
+                    j+=1
+                    if last:
+                        break
+                    first = False
+
+            for start_point, end_point in zip(start_points, end_points):
+                off_point = [(start_point[0] + end_point[0])/2, (start_point[1] + end_point[1])/2]
+                #off_point = create_gaussian_noise(off_point)
+                curve = [start_point, off_point, end_point]
+                fixed_num_contour.append(curve)
+            fixed_num_contours.append(np.array(fixed_num_contour))
+        return fixed_num_contours
+
+    def render_fixed_num_var_dist_bezier(self, num_points):
+        fixed_num_var_dist_contours = self.make_fixed_num_var_dist_bezier(num_points)        
+        plt.figure()
+        render(fixed_num_var_dist_contours)
+        for output_format in OUTPUT_FORMATS:
+            file_name = "{}-{}-fixed-num-var-diststraight-line-glyph.{}".format(self.font_name, self.char_name, output_format)
+            plt.savefig(os.path.join("outputs", "fixed-num-var-dist-straight-line", file_name))   
+        plt.close()     
     def make_fixed_num_point_contour(self, num_points):
         fixed_num_contours = []
         for contour in self.contours:
@@ -186,4 +227,5 @@ if __name__ == "__main__":
         # except:
         #     print(glyph.char_name)
         #glyph.render_straight_line_glyph()
-        glyph.render_fixed_num_bezier(num_points = args.points)
+        glyph.render_fixed_num_distance_bezier(num_points = args.points)
+        glyph.render_fixed_num_var_dist_bezier(num_points = args.points)
