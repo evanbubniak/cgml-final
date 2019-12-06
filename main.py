@@ -7,6 +7,7 @@ from glaze import read_json, render
 import matplotlib.pyplot as plt
 from math import isclose
 import argparse
+import contourlib
 
 UPPERCASES = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 LOWERCASES = [character.lower() for character in UPPERCASES]
@@ -54,14 +55,6 @@ def render_curve(curve, curve_name = "test"):
         plt.savefig(os.path.join("outputs", file_name))  
     plt.close()  
 
-def get_contour_length(contour):
-    length = 0
-    transposed_contour = np.transpose(contour, axes=(0, 2, 1)).astype(np.float64)
-    for curve in transposed_contour:
-        curve = bezier.Curve(curve, degree=2)
-        length += curve.length
-    return length
-
 def make_output_dirs():
     output_types = ["raw", "raw-straight-line", "fixed-straight-line"]
     for output_type in output_types:
@@ -73,30 +66,6 @@ def create_gaussian_noise(off_point, scale=0.05):
     noise = np.random.normal(scale=scale, size=2)
     noisy_point = [off_point[0] + noise[0], off_point[1] + noise[1]]
     return noisy_point
-
-def get_angle_changes(contour):
-    # return a list of angle changes between each bezier curve.
-    angles = []
-    for curve in contour:
-        delta_x = curve[2][0] - curve[0][0]
-        delta_y = curve[2][1] - curve[0][1]
-        theta = np.arctan2(delta_y, delta_x)
-        angles.append(theta)
-
-    delta_angles = [angles[i] - angles[i - 1] for i in range(0, len(angles))]
-    plt.figure()
-    plt.plot(range(len(angles)), angles)
-    plt.title("Thetas")
-    plt.xlabel("Curve number")
-    plt.ylabel("Angle between points (rad)")
-    plt.savefig("thetas.png")
-    plt.figure()
-    plt.plot(range(len(delta_angles)), delta_angles)
-    plt.title("Delta thetas")
-    plt.ylabel("Change in angle between points (rad)")
-    plt.xlabel("Curve number")
-    plt.savefig("deltathetas.png")
-    return delta_angles
 
 class Glyph:
     def __init__(self, font_name, char_name):
@@ -149,23 +118,22 @@ class Glyph:
         plt.close()
 
     def generate_contour_distribution(self, contour):
-        angle_changes = get_angle_changes(contour)
+        angle_changes = contourlib.get_angle_changes(contour)
         normalized_angle_changes = angle_changes/max(angle_changes)
 
-    def render_fixed_num_bezier(self, num_points = 20):
+    def render_fixed_num_bezier(self, num_points):
         for contour in self.contours:
             self.generate_contour_distribution(contour)
-    
-    def render_fixed_num_distance_bezier(self, num_points = 20):
-        fixed_num_contours = []
 
+    def make_fixed_num_point_contour(self, num_points):
+        fixed_num_contours = []
         for contour in self.contours:
 
             fixed_num_contour = []
             start_points = []
             end_points = []
 
-            contour_len = get_contour_length(contour)
+            contour_len = contourlib.get_contour_length(contour)
             dist_per_point = contour_len/(num_points)
             loc = 0
             len_sum = 0
@@ -198,7 +166,10 @@ class Glyph:
                 curve = [start_point, off_point, end_point]
                 fixed_num_contour.append(curve)
             fixed_num_contours.append(np.array(fixed_num_contour))
-
+        return fixed_num_contours
+    
+    def render_fixed_num_distance_bezier(self, num_points):
+        fixed_num_contours = self.make_fixed_num_point_contour(num_points)
         plt.figure()
         render(fixed_num_contours)
         for output_format in OUTPUT_FORMATS:
