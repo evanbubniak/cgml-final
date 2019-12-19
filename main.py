@@ -227,10 +227,7 @@ if __name__ == "__main__":
     make_output_dirs()
     for glyph in args.glyph:
         glyph = Glyph(font_name = args.font, char_name=glyph)
-        # try:
-        #     glyph.render_raw_glyph()
-        # except:
-        #     print(glyph.char_name)
-        #glyph.render_straight_line_glyph()
-        # glyph.render_fixed_num_distance_bezier(num_points = args.points)
+        glyph.render_raw_glyph()
+        glyph.render_straight_line_glyph()
+        glyph.render_fixed_num_distance_bezier(num_points = args.points)
         glyph.render_fixed_num_var_dist_bezier(num_points = args.points)
