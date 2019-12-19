@@ -6,11 +6,63 @@ import math
 
 OUTPUT_FORMATS = ["png"]
 
+def check_corners(contours):
+    eps = 0.0001
+    all_corners = []
+    # get slight episilon for each curve
+    for contour in contours:
+        eps_contour = []
+        curve_corners = []
+        for curve in contour:
+            bezier_curve = bezier.Curve(curve, degree=2)
+            start_point = bezier_curve.evaluate(eps).flatten()
+            end_point = bezier_curve.evaluate(1-eps).flatten()
+            eps_curve = [start_point, end_point]
+            eps_contour.append(eps_curve)
+
+        corners = get_corners(eps_contour)
+        for i in range(len(corners)):
+            if corners[i] == True:
+                curve_corners.append([contour[i][1][0], contour[i][1][1]])
+
+        all_corners.append(curve_corners)
+
+    return all_corners
+
+def get_corners(contour):
+    angles = []
+    delta_angles =  []
+    corners = []
+
+    for i in range(len(contour)):
+        end_point = contour[i][:][1]
+
+        if i != len(contour) - 1:
+            next_start_point = contour[i+1][:][0]
+        else:
+            next_start_point = contour[0][:][0]
+
+        delta_x = end_point[0] - next_start_point[0]
+        delta_y = end_point[1] - next_start_point[1]
+        theta = np.arctan2(delta_y, delta_x)
+        angles.append(theta)
+
+    delta_angles = [abs(angles[i-1] - angles[i]) for i in range(0, len(angles))]
+    filtered_delta_angles = correct_delta_thetas_above_threshold(delta_angles)
+
+    for i in range(len(filtered_delta_angles)):
+        if filtered_delta_angles[i] >= 1:
+            corners.append(True)
+        else:
+            corners.append(False)
+    return corners
+
+
 def swap_bad_contours(contours):
     filtered_contours = []
     for contour in contours:
-        transposed_contour = np.transpose(contour, axes=(0, 2, 1)).astype(np.float64)   
-        for i in range(len(contour)):      
+        transposed_contour = np.transpose(contour, axes=(0, 2, 1)).astype(np.float64)
+        for i in range(len(contour)):
             end_point_x = transposed_contour[i][0][2]
             end_point_y = transposed_contour[i][1][2]
             if i != len(transposed_contour) - 1:
@@ -35,7 +87,7 @@ def render_curve(curve, curve_name = "test"):
     for output_format in OUTPUT_FORMATS:
         plt.savefig("curve.{}".format(output_format))
         #file_name = "curve-{}.{}".format(curve_name, output_format)
-        #plt.savefig(os.path.join("outputs", file_name))  
+        #plt.savefig(os.path.join("outputs", file_name))
     plt.close()
 
 def render_contour(contour, contour_name = "test"):
@@ -44,8 +96,8 @@ def render_contour(contour, contour_name = "test"):
     for output_format in OUTPUT_FORMATS:
         plt.savefig("contour.{}".format(output_format))
         #file_name = "contour-{}.{}".format(contour_name, output_format)
-        #plt.savefig(os.path.join("outputs", file_name))  
-    plt.close()  
+        #plt.savefig(os.path.join("outputs", file_name))
+    plt.close()
 
 def get_contour_length(contour):
     length = 0
@@ -101,8 +153,8 @@ def plot_integral(delta_angles):
     plt.xlabel("Curve number")
     plt.ylabel("Integral_value")
     plt.savefig("delta_angles_integral.png")
-    plt.show()
-    
+    # plt.show()
+
 
 
 def get_fractional_locations(integral_vals, integral_step_length):
@@ -164,4 +216,4 @@ def plot_delta_thetas(angles, delta_angles):
     plt.ylabel("Change in angle between points (rad)")
     plt.xlabel("Curve number")
     plt.savefig("deltathetas_rad.png")
-    plt.show()
+    # plt.show()
