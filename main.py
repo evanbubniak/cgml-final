@@ -5,7 +5,7 @@ import bezier
 import numpy as np
 import glaze
 import matplotlib.pyplot as plt
-from math import isclose
+from math import isclose, sqrt
 import argparse
 import contourlib as cl
 
@@ -126,7 +126,7 @@ class Glyph:
             distribution = cl.generate_contour_distribution(contour, num_points)
             start_points = []
             end_points = []
-            
+
             loc = 0
             len_sum = 0
             transposed_contour = np.transpose(contour, axes=(0, 2, 1)).astype(np.float64)
@@ -151,7 +151,7 @@ class Glyph:
                         end_points.append(point)
                     else:
                         start_points.append(point)
-                        end_points.append(point)                    
+                        end_points.append(point)
                     j+=1
                     if last:
                         break
@@ -159,17 +159,22 @@ class Glyph:
 
             fixed_num_contour = make_fixed_num_contour(start_points, end_points)
             fixed_num_contours.append(np.array(fixed_num_contour))
+
         return fixed_num_contours
 
     def render_fixed_num_var_dist_bezier(self, num_points):
         render_name = "fixed-num-var-diststraight-line-glyph"
-        fixed_num_var_dist_contours = self.make_fixed_num_var_dist_bezier(num_points)        
+        fixed_num_var_dist_contours = self.make_fixed_num_var_dist_bezier(num_points)
+        # do snap here
+        fixed_num_var_dist_contours_corner = self.snap_corners(fixed_num_var_dist_contours)
+
         plt.figure()
-        cl.render(fixed_num_var_dist_contours)
+        cl.render(fixed_num_var_dist_contours_corner)
         for output_format in OUTPUT_FORMATS:
             file_name = "{}-{}-{}.{}".format(self.font_name, self.char_name, render_name, output_format)
-            plt.savefig(os.path.join("outputs", "fixed-num-var-dist-straight-line", file_name))   
+            plt.savefig(os.path.join("outputs", "fixed-num-var-dist-straight-line", file_name))
         plt.close()
+
     def make_fixed_num_point_contour(self, num_points):
         fixed_num_contours = []
         for contour in self.contours:
@@ -205,7 +210,7 @@ class Glyph:
                         end_points.append(point)
                     loc += dist_per_point
                     first = False
-       
+
             for start_point, end_point in zip(start_points, end_points):
                 off_point = [(start_point[0] + end_point[0])/2, (start_point[1] + end_point[1])/2]
                 #off_point = create_gaussian_noise(off_point)
@@ -213,16 +218,43 @@ class Glyph:
                 fixed_num_contour.append(curve)
             fixed_num_contours.append(np.array(fixed_num_contour))
         return fixed_num_contours
-    
+
     def render_fixed_num_distance_bezier(self, num_points):
         fixed_num_contours = self.make_fixed_num_point_contour(num_points)
         plt.figure()
         cl.render(fixed_num_contours)
         for output_format in OUTPUT_FORMATS:
             file_name = "{}-{}-fixed-straight-line-glyph.{}".format(self.font_name, self.char_name, output_format)
-            plt.savefig(os.path.join("outputs", "fixed-straight-line", file_name))   
-        plt.close()     
-                    
+            plt.savefig(os.path.join("outputs", "fixed-straight-line", file_name))
+        plt.close()
+
+    def snap_corners (self, new_contours):
+        all_corners = cl.check_corners(new_contours)
+
+        for k in range(len(new_contours)):
+            for contour_corner in all_corners:
+                for corner in contour_corner:
+                    distance = 100 # lol to start off
+                    for i in range(len(new_contours[k])):
+                        euc_dist = sqrt( (corner[0]-new_contours[k][i][2][0])**2 + (corner[1]-new_contours[k][i][2][1])**2 )
+                        if euc_dist < distance:
+                            distance = euc_dist
+                            index_curve = i
+
+                new_contours[k][index_curve][2][0] = corner[0]
+                new_contours[k][index_curve][2][1] = corner[1]
+
+                if index_curve == len(new_contours[k])-1:
+                    new_contours[k][0][0][0] = corner[0]
+                    new_contours[k][0][0][1] = corner[1]
+                else:
+                    new_contours[k][index_curve+1][0][0] = corner[0]
+                    new_contours[k][index_curve+1][0][1] = corner[1]
+
+        return new_contours
+
+
+
 if __name__ == "__main__":
     make_output_dirs()
     for glyph in args.glyph:
