@@ -32,10 +32,12 @@ SPECIALS = ["exclam",
     "at"]
 CHARACTER_SET = UPPERCASES + LOWERCASES + NUMERALS + SPECIALS
 
+DEFAULT_GLYPH = "E"
+
 parser = argparse.ArgumentParser()
 parser.add_argument("-o", "--output_format", nargs="*", default = ["png"],
     help="Output format of all renderings. Any output format supported by matplotlib.pyplot.savefig works here. Tip: PNG for pixel image, EPS for vector.")
-parser.add_argument("-g", "--glyph", nargs="*", default = ["W"],
+parser.add_argument("-g", "--glyph", nargs="*", default = [DEFAULT_GLYPH],
     help = "list of glyphs to render")
 parser.add_argument("-p", "--points", nargs="?", type=int, default = 20,
     help = "Num points to render")
@@ -53,21 +55,7 @@ def make_output_dirs():
         output_path = os.path.join("outputs", output_type)
         if not os.path.exists(output_path):
             os.makedirs(output_path)
-
-def create_gaussian_noise(off_point, scale=0.05):
-    noise = np.random.normal(scale=scale, size=2)
-    noisy_point = [off_point[0] + noise[0], off_point[1] + noise[1]]
-    return noisy_point
-
-def make_fixed_num_contour(start_points, end_points):
-        fixed_num_contour = []
-        for start_point, end_point in zip(start_points, end_points):
-            off_point = [(start_point[0] + end_point[0])/2, (start_point[1] + end_point[1])/2]
-            #off_point = create_gaussian_noise(off_point)
-            curve = [start_point, off_point, end_point]
-            fixed_num_contour.append(curve)
-        return fixed_num_contour
-
+            
 class Glyph:
     def __init__(self, font_name, char_name):
         self.glyph = None
@@ -83,7 +71,7 @@ class Glyph:
             raise Exception("Character not found in font")
         self.font_name = self.glyph[0]
         self.contours = cl.swap_bad_contours(self.glyph[2])
-        #self.contours = self.glyph[2]
+        #self.contours = self.glyph[2]  
         self.num_contours = len(self.contours)
 
     def render_raw_glyph(self):
@@ -157,7 +145,7 @@ class Glyph:
                         break
                     first = False
 
-            fixed_num_contour = make_fixed_num_contour(start_points, end_points)
+            fixed_num_contour = cl.make_fixed_num_contour(start_points, end_points)
             fixed_num_contours.append(np.array(fixed_num_contour))
 
         return fixed_num_contours
@@ -166,10 +154,10 @@ class Glyph:
         render_name = "fixed-num-var-diststraight-line-glyph"
         fixed_num_var_dist_contours = self.make_fixed_num_var_dist_bezier(num_points)
         # do snap here
-        fixed_num_var_dist_contours_corner = self.snap_corners(fixed_num_var_dist_contours)
-
+        #fixed_num_var_dist_contours = self.snap_corners(fixed_num_var_dist_contours)
+        fixed_num_var_dist_contours = [cl.get_snapped_corner_contour(contour, new_contour) for contour, new_contour in zip([np.transpose(contour, axes=(0, 2, 1)).astype(np.float64) for contour in self.contours], fixed_num_var_dist_contours)]
         plt.figure()
-        cl.render(fixed_num_var_dist_contours_corner)
+        cl.render(fixed_num_var_dist_contours)
         for output_format in OUTPUT_FORMATS:
             file_name = "{}-{}-{}.{}".format(self.font_name, self.char_name, render_name, output_format)
             plt.savefig(os.path.join("outputs", "fixed-num-var-dist-straight-line", file_name))
@@ -253,6 +241,11 @@ class Glyph:
 
         return new_contours
 
+    def plot_corners(self, contours_of_corners):
+        plt.figure()
+        for contour in contours_of_corners:
+            plt.scatter(*zip(*contour))
+        plt.savefig("{}_corners.png".format(self.char_name))
 
 
 if __name__ == "__main__":

@@ -5,58 +5,101 @@ from .render import render
 import math
 
 OUTPUT_FORMATS = ["png"]
+THRESHOLD = np.pi
+EPSILON = 0.01
+CORNER_THRESHOLD = 0.2
 
-def check_corners(contours):
-    eps = 0.0001
-    all_corners = []
-    # get slight episilon for each curve
-    for contour in contours:
-        eps_contour = []
-        curve_corners = []
-        for curve in contour:
-            bezier_curve = bezier.Curve(curve, degree=2)
-            start_point = bezier_curve.evaluate(eps).flatten()
-            end_point = bezier_curve.evaluate(1-eps).flatten()
-            eps_curve = [start_point, end_point]
-            eps_contour.append(eps_curve)
-
-        corners = get_corners(eps_contour)
-        for i in range(len(corners)):
-            if corners[i] == True:
-                curve_corners.append([contour[i][1][0], contour[i][1][1]])
-
-        all_corners.append(curve_corners)
-
-    return all_corners
-
-def get_corners(contour):
-    angles = []
-    delta_angles =  []
+def get_contour_corners(contour):
     corners = []
+    start_points = []
+    end_points = []
+    epsilon_start_points = []
+    epsilon_end_points = []
+    for curve in contour:
+        bezier_curve = bezier.Curve(curve, degree=2)
+        start_point_x = curve[0][0]
+        start_point_y = curve[1][0]
+        start_points.append([start_point_x, start_point_y])
+        end_point_x = curve[0][2]
+        end_point_y = curve[1][2]
+        end_points.append([end_point_x, end_point_y])
+        epsilon_start_point = bezier_curve.evaluate(EPSILON).flatten()
+        epsilon_end_point = bezier_curve.evaluate(1-EPSILON).flatten()
+        epsilon_start_points.append(epsilon_start_point)
+        epsilon_end_points.append(epsilon_end_point)
+    
+    for i in range(len(start_points) - 1):
+        delta_x_end = end_points[i][0] - epsilon_end_points[i][0]
+        delta_y_end = end_points[i][1] - epsilon_end_points[i][1]
+        theta_1 = np.arctan2(delta_y_end, delta_x_end)
+        delta_x_start = epsilon_start_points[i+1][0] - start_points[i+1][0]
+        delta_y_start = epsilon_start_points[i+1][1] - start_points[i+1][1]
+        theta_2 = np.arctan2(delta_y_start, delta_x_start)
+        delta_theta = abs(theta_2 - theta_1)
+        if delta_theta > THRESHOLD:
+            delta_theta = abs(delta_theta - 2*np.pi)
+        if delta_theta < -1*THRESHOLD:
+            delta_theta = abs(delta_theta + 2*np.pi)
+        if delta_theta > CORNER_THRESHOLD:
+            corners.append(start_points[i+1])
 
-    for i in range(len(contour)):
-        end_point = contour[i][:][1]
-
-        if i != len(contour) - 1:
-            next_start_point = contour[i+1][:][0]
-        else:
-            next_start_point = contour[0][:][0]
-
-        delta_x = end_point[0] - next_start_point[0]
-        delta_y = end_point[1] - next_start_point[1]
-        theta = np.arctan2(delta_y, delta_x)
-        angles.append(theta)
-
-    delta_angles = [abs(angles[i-1] - angles[i]) for i in range(0, len(angles))]
-    filtered_delta_angles = correct_delta_thetas_above_threshold(delta_angles)
-
-    for i in range(len(filtered_delta_angles)):
-        if filtered_delta_angles[i] >= 1:
-            corners.append(True)
-        else:
-            corners.append(False)
+    delta_x_end = end_points[-1][0] - epsilon_end_points[-1][0]
+    delta_y_end = end_points[-1][1] - epsilon_end_points[-1][1]
+    theta_1 = np.arctan2(delta_y_end, delta_x_end)
+    delta_x_start = epsilon_start_points[0][0] - start_points[0][0]
+    delta_y_start = epsilon_start_points[0][1] - start_points[0][1]
+    theta_2 = np.arctan2(delta_y_start, delta_x_start)
+    delta_theta = abs(theta_2 - theta_1)
+    if delta_theta > THRESHOLD:
+        delta_theta = abs(delta_theta - 2*np.pi)
+    if delta_theta < -1*THRESHOLD:
+        delta_theta = abs(delta_theta + 2*np.pi)
+    if delta_theta > CORNER_THRESHOLD:
+        corners.append(start_points[0])
+    plt.figure()
+    plt.scatter(*zip(*corners))
+    plt.savefig("test.png")
     return corners
 
+def get_closest_point(new_contour, corner):
+    j = 0
+    start_point_x = new_contour[0][0][0]
+    start_point_y = new_contour[0][0][1]
+    shortest_distance = np.sqrt( (corner[0]-start_point_x)**2 + (corner[1]-start_point_y)**2 )
+    for i in range(1, len(new_contour)):
+        start_point_x = new_contour[i][0][0]
+        start_point_y = new_contour[i][0][1]
+        distance = np.sqrt( (corner[0]-start_point_x)**2 + (corner[1]-start_point_y)**2 )
+        if distance < shortest_distance:
+            shortest_distance = distance
+            j = i
+    return j
+
+def get_snapped_corner_contour(contour, new_contour):
+    contour_corners = get_contour_corners(contour)
+    for corner in contour_corners:
+        startpoint_index_to_swap = get_closest_point(new_contour, corner)
+        new_contour[startpoint_index_to_swap][0][0] = corner[0]
+        new_contour[startpoint_index_to_swap][0][1] = corner[1]
+        new_contour[startpoint_index_to_swap-1][2][0] = corner[0]
+        new_contour[startpoint_index_to_swap-1][2][1] = corner[1]
+    for i in range(len(new_contour)):
+        new_contour[i][1] = [(new_contour[i][0][0] + new_contour[i][2][0])/2, (new_contour[i][0][1] + new_contour[i][2][1])/2]
+    return np.array(new_contour)
+
+def make_fixed_num_contour(start_points, end_points):
+        fixed_num_contour = []
+        for start_point, end_point in zip(start_points, end_points):
+            off_point = [(start_point[0] + end_point[0])/2, (start_point[1] + end_point[1])/2]
+            #off_point = create_gaussian_noise(off_point)
+            curve = [start_point, off_point, end_point]
+            fixed_num_contour.append(curve)
+        return fixed_num_contour
+
+def create_gaussian_noise(off_point, scale=0.05):
+    noise = np.random.normal(scale=scale, size=2)
+    noisy_point = [off_point[0] + noise[0], off_point[1] + noise[1]]
+    return noisy_point
 
 def swap_bad_contours(contours):
     filtered_contours = []
@@ -183,11 +226,11 @@ def generate_contour_distribution(contour, num_points = 20):
     fractional_locations_of_integral_step_values = get_fractional_locations(delta_thetas_integral_vals, integral_step_length)
     return fractional_locations_of_integral_step_values
 
-def correct_delta_thetas_above_threshold(delta_angles, threshold = np.pi):
+def correct_delta_thetas_above_threshold(delta_angles):
     for i in range(len(delta_angles)):
-        if delta_angles[i] > threshold:
+        if delta_angles[i] > THRESHOLD:
             delta_angles[i] = abs(delta_angles[i] - 2*np.pi)
-        if delta_angles[i] < -1*threshold:
+        if delta_angles[i] < -1*THRESHOLD:
             delta_angles[i] = abs(delta_angles[i] + 2*np.pi)
     return delta_angles
 
