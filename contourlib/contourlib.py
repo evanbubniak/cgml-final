@@ -56,9 +56,6 @@ def get_contour_corners(contour):
         delta_theta = abs(delta_theta + 2*np.pi)
     if delta_theta > CORNER_THRESHOLD:
         corners.append(start_points[0])
-    plt.figure()
-    plt.scatter(*zip(*corners))
-    plt.savefig("test.png")
     return corners
 
 def get_closest_point(new_contour, corner):
@@ -128,18 +125,16 @@ def render_curve(curve, curve_name = "test"):
     plt.figure()
     render(np.array([curve]))
     for output_format in OUTPUT_FORMATS:
-        plt.savefig("curve.{}".format(output_format))
-        #file_name = "curve-{}.{}".format(curve_name, output_format)
-        #plt.savefig(os.path.join("outputs", file_name))
+        file_name = "curve-{}.{}".format(curve_name, output_format)
+        plt.savefig(os.path.join("outputs", "angle_charts", file_name))
     plt.close()
 
 def render_contour(contour, contour_name = "test"):
     plt.figure()
     render(np.array(contour))
     for output_format in OUTPUT_FORMATS:
-        plt.savefig("contour.{}".format(output_format))
-        #file_name = "contour-{}.{}".format(contour_name, output_format)
-        #plt.savefig(os.path.join("outputs", file_name))
+        file_name = "contour-{}.{}".format(contour_name, output_format)
+        plt.savefig(os.path.join("outputs", file_name))
     plt.close()
 
 def get_contour_length(contour):
@@ -167,8 +162,6 @@ def get_delta_thetas(contour):
 
     delta_angles = [abs(angles[i-1] - angles[i]) for i in range(0, len(angles))]
     filtered_delta_angles = correct_delta_thetas_above_threshold(delta_angles)
-    plot_delta_thetas(angles, filtered_delta_angles)
-
     return filtered_delta_angles
 
 def integral_of_delta_thetas(delta_angles):
@@ -195,10 +188,7 @@ def plot_integral(delta_angles):
     plt.title("Integral values")
     plt.xlabel("Curve number")
     plt.ylabel("Integral_value")
-    plt.savefig("delta_angles_integral.png")
-    # plt.show()
-
-
+    plt.savefig(os.path.join("outputs", "angle_charts", "delta_angles_integral.png"))
 
 def get_fractional_locations(integral_vals, integral_step_length):
     loc = 0
@@ -240,23 +230,22 @@ def plot_delta_thetas(angles, delta_angles):
     plt.title("Thetas")
     plt.xlabel("Curve number")
     plt.ylabel("Angle between points (deg)")
-    plt.savefig("thetas.png")
+    plt.savefig(os.path.join("outputs", "angle_charts", "thetas.png"))
     plt.figure()
     plt.plot(range(len(delta_angles)), [delta_angle*(180/np.pi) for delta_angle in delta_angles])
     plt.title("Delta thetas")
     plt.ylabel("Change in angle between points (deg)")
     plt.xlabel("Curve number")
-    plt.savefig("deltathetas.png")
+    plt.savefig(os.path.join("outputs", "angle_charts", "deltathetas.png"))
     plt.figure()
     plt.plot(range(len(angles)), angles)
     plt.title("Thetas")
     plt.xlabel("Curve number")
     plt.ylabel("Angle between points (rad)")
-    plt.savefig("thetas_rad.png")
+    plt.savefig(os.path.join("outputs", "angle_charts", "thetas_rad.png"))
     plt.figure()
     plt.plot(range(len(delta_angles)), delta_angles)
     plt.title("Delta thetas")
     plt.ylabel("Change in angle between points (rad)")
     plt.xlabel("Curve number")
-    plt.savefig("deltathetas_rad.png")
-    # plt.show()
+    plt.savefig(os.path.join("outputs", "angle_charts", "deltathetas_rad.png"))

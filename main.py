@@ -252,7 +252,8 @@ class Glyph:
         plt.figure()
         for contour in contours_of_corners:
             plt.scatter(*zip(*contour))
-        plt.savefig("{}_corners.png".format(self.char_name))
+        plot_name = os.path.join("outputs", "angle_charts", "{}_corners.png".format(self.char_name)) 
+        plt.savefig(plot_name)
 
 
 if __name__ == "__main__":
