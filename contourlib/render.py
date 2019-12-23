@@ -30,7 +30,7 @@ def _validate_glyph(args):
     return glyph
 
 
-def render(*args, num_points=32, lim=[-0.3, 1.2], grid=False):
+def render(*args, num_points=32, lim=[-0.5, 1.5], grid=False):
     """
     Renders one glyph.
 

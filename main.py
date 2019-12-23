@@ -9,6 +9,11 @@ from math import isclose, sqrt
 import argparse
 import contourlib as cl
 
+def get_current_fonts():
+    fonts_path = os.path.join("fonts", "json")
+    fonts = [os.path.splitext(filename)[0] for filename in os.listdir(fonts_path)]
+    return fonts
+
 UPPERCASES = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 LOWERCASES = [character.lower() for character in UPPERCASES]
 NUMERALS = ["zero",
@@ -41,11 +46,13 @@ parser.add_argument("-g", "--glyph", nargs="*", default = [DEFAULT_GLYPH],
     help = "list of glyphs to render")
 parser.add_argument("-p", "--points", nargs="?", type=int, default = 20,
     help = "Num points to render")
-parser.add_argument("-f", "--font", type=str, nargs="?", default="arial",
+parser.add_argument("-f", "--font", type=str, nargs="*", default=["arial"],
     help = "Font to use")
 args = parser.parse_args()
 if args.glyph == ["all"]:
     args.glyph = CHARACTER_SET
+if args.font == ["all"]:
+    args.font = get_current_fonts()
 
 OUTPUT_FORMATS = args.output_format
 
@@ -250,9 +257,10 @@ class Glyph:
 
 if __name__ == "__main__":
     make_output_dirs()
-    for glyph in args.glyph:
-        glyph = Glyph(font_name = args.font, char_name=glyph)
-        glyph.render_raw_glyph()
-        glyph.render_straight_line_glyph()
-        glyph.render_fixed_num_distance_bezier(num_points = args.points)
-        glyph.render_fixed_num_var_dist_bezier(num_points = args.points)
+    for font in args.font:
+        for glyph in args.glyph:
+            glyph = Glyph(font_name = font, char_name=glyph)
+            glyph.render_raw_glyph()
+            glyph.render_straight_line_glyph()
+            glyph.render_fixed_num_distance_bezier(num_points = args.points)
+            glyph.render_fixed_num_var_dist_bezier(num_points = args.points)

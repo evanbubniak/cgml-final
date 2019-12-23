@@ -7,7 +7,7 @@ import math
 OUTPUT_FORMATS = ["png"]
 THRESHOLD = np.pi
 EPSILON = 0.01
-CORNER_THRESHOLD = 0.2
+CORNER_THRESHOLD = 0.1
 
 def get_contour_corners(contour):
     corners = []
